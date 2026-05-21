@@ -39,6 +39,7 @@ const INACTIVE_VENDOR_OPTIONS = [
 const TALENT_ACQUISITION_OPTIONS = [
   "Maniram - Talent Acquisition",
   "Praveen - Talent Acquisition",
+  "Harish - Talent Acquisition",
   "Internal Referrals",
   "Careers and Linkedin",
 ];
@@ -76,7 +77,9 @@ export default function SubmissionData() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 
-  const [selectedDate, setSelectedDate] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
   const [selectedActiveVendor, setSelectedActiveVendor] = useState("All");
   const [selectedInactiveVendor, setSelectedInactiveVendor] = useState("All");
   const [selectedTalentTeam, setSelectedTalentTeam] = useState("All");
@@ -138,7 +141,6 @@ export default function SubmissionData() {
       return "Screen Rejected";
 
     if (text.includes("duplicate")) return "Duplicate Submission";
-
     if (text.includes("no show")) return "No Show";
 
     if (
@@ -178,28 +180,30 @@ export default function SubmissionData() {
   const parseDate = (value) => {
     if (!value) return null;
 
-    const directDate = new Date(value);
-    if (!Number.isNaN(directDate.getTime())) return directDate;
-
     const text = String(value).trim();
 
     if (text.includes("/")) {
-      const [dd, mm, yyyy] = text.split("/");
-      const parsed = new Date(`${yyyy}-${mm}-${dd}`);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
+      const parts = text.split("/");
+      if (parts.length === 3) {
+        const [dd, mm, yyyy] = parts;
+        const parsed = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
     }
 
+    if (text.includes("-")) {
+      const parts = text.split("-");
+      if (parts.length === 3) {
+        const [yyyy, mm, dd] = parts;
+        const parsed = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+    }
+
+    const directDate = new Date(value);
+    if (!Number.isNaN(directDate.getTime())) return directDate;
+
     return null;
-  };
-
-  const formatDateKey = (date) => {
-    if (!date) return "";
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
   };
 
   const getDateValue = (item) =>
@@ -211,6 +215,29 @@ export default function SubmissionData() {
     ]);
 
   const getDate = (item) => parseDate(getDateValue(item));
+
+  const getDateOnlyTime = (date) => {
+    if (!date) return null;
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    ).getTime();
+  };
+
+  const isDateInRange = (itemDate) => {
+    if (!fromDate && !toDate) return true;
+    if (!itemDate) return false;
+
+    const rowTime = getDateOnlyTime(itemDate);
+    const fromTime = fromDate ? getDateOnlyTime(parseDate(fromDate)) : null;
+    const toTime = toDate ? getDateOnlyTime(parseDate(toDate)) : null;
+
+    if (fromTime && rowTime < fromTime) return false;
+    if (toTime && rowTime > toTime) return false;
+
+    return true;
+  };
 
   const isMatched = (actual, selected) =>
     selected === "All" || normalizeText(actual) === normalizeText(selected);
@@ -269,37 +296,20 @@ export default function SubmissionData() {
     return rows.filter((item) => {
       const submittedBy = getSubmittedBy(item);
       const functionName = getFunction(item);
-
       const itemDate = getDate(item);
-      const itemDateKey = formatDateKey(itemDate);
-
-      const dateMatch = !selectedDate || itemDateKey === selectedDate;
-
-      const activeVendorMatch = isMatched(
-        submittedBy,
-        selectedActiveVendor
-      );
-
-      const inactiveVendorMatch = isMatched(
-        submittedBy,
-        selectedInactiveVendor
-      );
-
-      const talentTeamMatch = isMatched(submittedBy, selectedTalentTeam);
-
-      const functionMatch = isMatched(functionName, selectedFunction);
 
       return (
-        dateMatch &&
-        activeVendorMatch &&
-        inactiveVendorMatch &&
-        talentTeamMatch &&
-        functionMatch
+        isDateInRange(itemDate) &&
+        isMatched(submittedBy, selectedActiveVendor) &&
+        isMatched(submittedBy, selectedInactiveVendor) &&
+        isMatched(submittedBy, selectedTalentTeam) &&
+        isMatched(functionName, selectedFunction)
       );
     });
   }, [
     rows,
-    selectedDate,
+    fromDate,
+    toDate,
     selectedActiveVendor,
     selectedInactiveVendor,
     selectedTalentTeam,
@@ -325,7 +335,8 @@ export default function SubmissionData() {
   }, [filteredRows]);
 
   const clearFilters = () => {
-    setSelectedDate("");
+    setFromDate("");
+    setToDate("");
     setSelectedActiveVendor("All");
     setSelectedInactiveVendor("All");
     setSelectedTalentTeam("All");
@@ -337,8 +348,8 @@ export default function SubmissionData() {
       <h1 className="page-title">NB Submission Data</h1>
 
       <p className="page-subtitle">
-        Submission dashboard with separate vendor, Talent Acquisition, function
-        and status filters.
+        Submission dashboard with date range, vendor, Talent Acquisition,
+        function and status filters.
       </p>
 
       {apiError && (
@@ -348,12 +359,25 @@ export default function SubmissionData() {
       )}
 
       <div style={styles.filterBar}>
-        <input
-          style={styles.input}
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-        />
+        <div style={styles.dateGroup}>
+          <label style={styles.label}>From Date</label>
+          <input
+            style={styles.input}
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </div>
+
+        <div style={styles.dateGroup}>
+          <label style={styles.label}>To Date</label>
+          <input
+            style={styles.input}
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
+        </div>
 
         <select
           style={styles.select}
@@ -468,13 +492,25 @@ const styles = {
   filterBar: {
     display: "flex",
     gap: "12px",
-    alignItems: "center",
+    alignItems: "flex-end",
     flexWrap: "wrap",
     margin: "18px 0 24px",
     padding: "14px",
     background: "#ffffff",
     borderRadius: "18px",
     border: "1px solid #bbf7d0",
+  },
+
+  dateGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+
+  label: {
+    fontSize: "12px",
+    fontWeight: "800",
+    color: "#14532d",
   },
 
   select: {

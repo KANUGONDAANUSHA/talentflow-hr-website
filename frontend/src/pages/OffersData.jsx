@@ -21,7 +21,9 @@ export default function OffersData() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
+
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const cleanText = (value) => String(value || "").trim();
 
@@ -44,38 +46,40 @@ export default function OffersData() {
   const parseDate = (value) => {
     if (!value) return null;
 
-    const directDate = new Date(value);
-    if (!Number.isNaN(directDate.getTime())) return directDate;
-
     const text = String(value).trim();
 
     if (text.includes("/")) {
-      const [dd, mm, yyyy] = text.split("/");
-      const parsed = new Date(`${yyyy}-${mm}-${dd}`);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
-    }
-
-    if (text.includes("-")) {
-      const parts = text.split("-");
-
+      const parts = text.split("/");
       if (parts.length === 3) {
         const [dd, mm, yyyy] = parts;
-        const parsed = new Date(`${yyyy}-${mm}-${dd}`);
+        const parsed = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
         if (!Number.isNaN(parsed.getTime())) return parsed;
       }
     }
 
+    if (text.includes("-")) {
+      const parts = text.split("-");
+      if (parts.length === 3) {
+        const [yyyy, mm, dd] = parts;
+        const parsed = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+    }
+
+    const directDate = new Date(value);
+    if (!Number.isNaN(directDate.getTime())) return directDate;
+
     return null;
   };
 
-  const formatDateKey = (date) => {
-    if (!date) return "";
+  const getDateOnlyTime = (date) => {
+    if (!date) return null;
 
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    ).getTime();
   };
 
   const getDateValue = (item) =>
@@ -88,6 +92,20 @@ export default function OffersData() {
     getValueByKey(item, "Month");
 
   const getDate = (item) => parseDate(getDateValue(item));
+
+  const isDateInRange = (itemDate) => {
+    if (!fromDate && !toDate) return true;
+    if (!itemDate) return false;
+
+    const rowTime = getDateOnlyTime(itemDate);
+    const fromTime = fromDate ? getDateOnlyTime(parseDate(fromDate)) : null;
+    const toTime = toDate ? getDateOnlyTime(parseDate(toDate)) : null;
+
+    if (fromTime && rowTime < fromTime) return false;
+    if (toTime && rowTime > toTime) return false;
+
+    return true;
+  };
 
   const loadOffersData = async () => {
     try {
@@ -146,15 +164,8 @@ export default function OffersData() {
   }, []);
 
   const filteredRows = useMemo(() => {
-    return rows.filter((item) => {
-      if (!selectedDate) return true;
-
-      const itemDate = getDate(item);
-      const itemDateKey = formatDateKey(itemDate);
-
-      return itemDateKey === selectedDate;
-    });
-  }, [rows, selectedDate]);
+    return rows.filter((item) => isDateInRange(getDate(item)));
+  }, [rows, fromDate, toDate]);
 
   const totals = useMemo(() => {
     const result = {
@@ -177,7 +188,8 @@ export default function OffersData() {
   const totalOffers = totals["Offers Released"];
 
   const clearFilters = () => {
-    setSelectedDate("");
+    setFromDate("");
+    setToDate("");
   };
 
   return (
@@ -197,12 +209,25 @@ export default function OffersData() {
       )}
 
       <div style={styles.filterBar}>
-        <input
-          style={styles.input}
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-        />
+        <div style={styles.dateGroup}>
+          <label style={styles.label}>From Date</label>
+          <input
+            style={styles.input}
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </div>
+
+        <div style={styles.dateGroup}>
+          <label style={styles.label}>To Date</label>
+          <input
+            style={styles.input}
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
+        </div>
 
         <button style={styles.refreshBtn} onClick={loadOffersData}>
           Refresh
@@ -306,7 +331,7 @@ const styles = {
   filterBar: {
     display: "flex",
     gap: "12px",
-    alignItems: "center",
+    alignItems: "flex-end",
     flexWrap: "wrap",
     margin: "18px 0 24px",
     padding: "14px",
@@ -314,6 +339,18 @@ const styles = {
     borderRadius: "18px",
     boxShadow: "0 4px 16px rgba(34,197,94,0.08)",
     border: "1px solid #bbf7d0",
+  },
+
+  dateGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+
+  label: {
+    fontSize: "12px",
+    fontWeight: "800",
+    color: "#14532d",
   },
 
   input: {

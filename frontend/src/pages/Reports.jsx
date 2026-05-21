@@ -48,6 +48,8 @@ const TIME_FILTERS = [
 
 const REMOVED_ENTITIES = ["chalukya samrat"];
 
+const EXTRA_FUNCTIONS = ["HR", "Payroll"];
+
 export default function Reports() {
   const [jobs, setJobs] = useState([]);
   const [selectedFunction, setSelectedFunction] = useState("All Functions");
@@ -62,7 +64,8 @@ export default function Reports() {
 
   const clean = (value) => String(value ?? "").trim();
 
-  const normalize = (value) => clean(value).toLowerCase().replace(/\s+/g, " ");
+  const normalize = (value) =>
+    clean(value).toLowerCase().replace(/\s+/g, " ");
 
   const toNumber = (value) => {
     const num = Number(clean(value).replace(/,/g, ""));
@@ -274,8 +277,18 @@ export default function Reports() {
   }, []);
 
   const functions = useMemo(() => {
-    const list = jobs.map(getFunction).filter(Boolean);
-    return ["All Functions", ...Array.from(new Set(list)).sort()];
+    const backendFunctions = jobs
+      .map((item) => getFunction(item))
+      .filter(Boolean)
+      .map((item) => clean(item));
+
+    const uniqueFunctions = Array.from(
+      new Set([...backendFunctions, ...EXTRA_FUNCTIONS])
+    )
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+    return ["All Functions", ...uniqueFunctions];
   }, [jobs]);
 
   const entities = useMemo(() => {
