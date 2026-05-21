@@ -38,6 +38,7 @@ const DASHBOARD_FILTERS = [
 
 const TIME_FILTERS = [
   "All Time",
+  "Custom Range",
   "Today",
   "Yesterday",
   "This Week",
@@ -47,7 +48,6 @@ const TIME_FILTERS = [
 ];
 
 const REMOVED_ENTITIES = ["chalukya samrat"];
-
 const EXTRA_FUNCTIONS = ["HR", "Payroll"];
 
 export default function Reports() {
@@ -56,6 +56,8 @@ export default function Reports() {
   const [selectedEntity, setSelectedEntity] = useState("All Entities");
   const [selectedDashboard, setSelectedDashboard] = useState("All Dashboard");
   const [selectedTime, setSelectedTime] = useState("All Time");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -63,9 +65,7 @@ export default function Reports() {
   const [maximizedChart, setMaximizedChart] = useState(null);
 
   const clean = (value) => String(value ?? "").trim();
-
-  const normalize = (value) =>
-    clean(value).toLowerCase().replace(/\s+/g, " ");
+  const normalize = (value) => clean(value).toLowerCase().replace(/\s+/g, " ");
 
   const toNumber = (value) => {
     const num = Number(clean(value).replace(/,/g, ""));
@@ -80,42 +80,29 @@ export default function Reports() {
   };
 
   const getSlNo = (item) => getValue(item, ["Sl No.", "Sl No", "S No"]);
-
   const getDesignation = (item) =>
     clean(getValue(item, ["Designation", "Role", "Position"]));
-
   const getFunction = (item) =>
     clean(getValue(item, ["Function", "Department", "FUNCTION"]));
-
   const getEntity = (item) => clean(getValue(item, ["Entity", "ENTITY"]));
-
   const getStatus = (item) => clean(getValue(item, ["Status", "STATUS"]));
-
   const getCreatedDate = (item) =>
     getValue(item, ["Created Date", "CreatedAt", "Date", "Opening Date"]);
-
   const getClosedDate = (item) =>
     getValue(item, ["Closed Date", "ClosedAt", "Closing Date"]);
 
   const getTotalPositions = (item) =>
     toNumber(getValue(item, ["Total Positions", "Total Position", "Total"]));
-
   const getJoined = (item) => toNumber(getValue(item, ["Joined"]));
-
   const getYTJ = (item) =>
     toNumber(getValue(item, ["Yet to join", "Yet to Join", "YTJ"]));
-
   const getOpen = (item) =>
     toNumber(getValue(item, ["Open Number", "Open", "Openings"]));
-
   const getHold = (item) => toNumber(getValue(item, ["On Hold", "Hold"]));
-
   const getVendors = (item) =>
     toNumber(getValue(item, ["Closed by vendors", "Closed by Vendors"]));
-
   const getTA = (item) =>
     toNumber(getValue(item, ["Closed by TA Team", "TA Team"]));
-
   const getInternal = (item) =>
     toNumber(
       getValue(item, [
@@ -154,6 +141,12 @@ export default function Reports() {
     return Number.isNaN(date.getTime()) ? null : date;
   };
 
+  const startOfDay = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
   const formatDate = (value) => {
     const date = parseDate(value);
     if (!date) return clean(value);
@@ -163,19 +156,25 @@ export default function Reports() {
   const isWithinTime = (createdDate, closedDate) => {
     if (selectedTime === "All Time") return true;
 
-    const dates = [parseDate(createdDate), parseDate(closedDate)].filter(
-      Boolean
-    );
-
+    const dates = [parseDate(createdDate), parseDate(closedDate)].filter(Boolean);
     if (dates.length === 0) return false;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    if (selectedTime === "Custom Range") {
+      if (!fromDate || !toDate) return true;
+
+      const from = startOfDay(new Date(fromDate));
+      const to = startOfDay(new Date(toDate));
+
+      return dates.some((date) => {
+        const d = startOfDay(date);
+        return d >= from && d <= to;
+      });
+    }
+
+    const today = startOfDay(new Date());
 
     return dates.some((date) => {
-      const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
-
+      const d = startOfDay(date);
       const diffDays = Math.floor((today - d) / (1000 * 60 * 60 * 24));
 
       if (selectedTime === "Today") return diffDays === 0;
@@ -277,16 +276,10 @@ export default function Reports() {
   }, []);
 
   const functions = useMemo(() => {
-    const backendFunctions = jobs
-      .map((item) => getFunction(item))
-      .filter(Boolean)
-      .map((item) => clean(item));
-
+    const backendFunctions = jobs.map(getFunction).filter(Boolean);
     const uniqueFunctions = Array.from(
       new Set([...backendFunctions, ...EXTRA_FUNCTIONS])
-    )
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
+    ).sort((a, b) => a.localeCompare(b));
 
     return ["All Functions", ...uniqueFunctions];
   }, [jobs]);
@@ -360,6 +353,8 @@ export default function Reports() {
     selectedEntity,
     selectedDashboard,
     selectedTime,
+    fromDate,
+    toDate,
     searchText,
   ]);
 
@@ -618,6 +613,25 @@ export default function Reports() {
             </option>
           ))}
         </select>
+
+        {selectedTime === "Custom Range" && (
+          <>
+            <input
+              className="filter-select"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+
+            <input
+              className="filter-select"
+              type="date"
+              value={toDate}
+              min={fromDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </>
+        )}
 
         <input
           className="filter-select"
