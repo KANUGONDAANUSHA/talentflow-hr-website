@@ -34,14 +34,21 @@ const INACTIVE_VENDOR_OPTIONS = [
   "Formore Talent",
   "Cernobia",
   "R2R Consultants LLP",
+  "SMAVIS Technologies",
 ];
 
 const TALENT_ACQUISITION_OPTIONS = [
-  "Maniram - Talent Acquisition",
   "Praveen - Talent Acquisition",
+  "Maniram - Talent Acquisition",
   "Harish - Talent Acquisition",
-  "Internal Referrals",
-  "Careers and Linkedin",
+  "Santhosh Kumar Panda - Deputy General Manager – Store Execution",
+];
+
+const ENTITY_OPTIONS = [
+  "Nambiar Ensemble residential Projects LLP",
+  "Sentrise Construction LLP",
+  "Nambiar Builders Private Limited",
+  "Nambiar Enterprises LLP",
 ];
 
 const FUNCTION_OPTIONS = [
@@ -70,6 +77,7 @@ const FUNCTION_OPTIONS = [
   "HR",
   "Payroll",
   "Housekeeping",
+  "Blue-collar workforce",
 ];
 
 export default function SubmissionData() {
@@ -83,6 +91,7 @@ export default function SubmissionData() {
   const [selectedActiveVendor, setSelectedActiveVendor] = useState("All");
   const [selectedInactiveVendor, setSelectedInactiveVendor] = useState("All");
   const [selectedTalentTeam, setSelectedTalentTeam] = useState("All");
+  const [selectedEntity, setSelectedEntity] = useState("All");
   const [selectedFunction, setSelectedFunction] = useState("All");
 
   const cleanText = (value) => String(value || "").trim();
@@ -112,6 +121,20 @@ export default function SubmissionData() {
         "Consultant",
         "TA",
         "Recruiter",
+        "Processed By",
+        "ProcessedBy",
+      ])
+    );
+
+  const getEntity = (item) =>
+    cleanText(
+      getValueByPossibleKeys(item, [
+        "Entity",
+        "Entities",
+        "Company",
+        "Company Name",
+        "Entity Name",
+        "Business Entity",
       ])
     );
 
@@ -141,6 +164,7 @@ export default function SubmissionData() {
       return "Screen Rejected";
 
     if (text.includes("duplicate")) return "Duplicate Submission";
+
     if (text.includes("no show")) return "No Show";
 
     if (
@@ -218,11 +242,7 @@ export default function SubmissionData() {
 
   const getDateOnlyTime = (date) => {
     if (!date) return null;
-    return new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    ).getTime();
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   };
 
   const isDateInRange = (itemDate) => {
@@ -255,7 +275,6 @@ export default function SubmissionData() {
       });
 
       const text = await res.text();
-
       let result = {};
 
       try {
@@ -295,6 +314,7 @@ export default function SubmissionData() {
   const filteredRows = useMemo(() => {
     return rows.filter((item) => {
       const submittedBy = getSubmittedBy(item);
+      const entityName = getEntity(item);
       const functionName = getFunction(item);
       const itemDate = getDate(item);
 
@@ -303,6 +323,7 @@ export default function SubmissionData() {
         isMatched(submittedBy, selectedActiveVendor) &&
         isMatched(submittedBy, selectedInactiveVendor) &&
         isMatched(submittedBy, selectedTalentTeam) &&
+        isMatched(entityName, selectedEntity) &&
         isMatched(functionName, selectedFunction)
       );
     });
@@ -313,6 +334,7 @@ export default function SubmissionData() {
     selectedActiveVendor,
     selectedInactiveVendor,
     selectedTalentTeam,
+    selectedEntity,
     selectedFunction,
   ]);
 
@@ -325,10 +347,7 @@ export default function SubmissionData() {
 
     filteredRows.forEach((item) => {
       const status = getStatus(item);
-
-      if (counts[status] !== undefined) {
-        counts[status] += 1;
-      }
+      if (counts[status] !== undefined) counts[status] += 1;
     });
 
     return counts;
@@ -340,6 +359,7 @@ export default function SubmissionData() {
     setSelectedActiveVendor("All");
     setSelectedInactiveVendor("All");
     setSelectedTalentTeam("All");
+    setSelectedEntity("All");
     setSelectedFunction("All");
   };
 
@@ -348,7 +368,7 @@ export default function SubmissionData() {
       <h1 className="page-title">NB Submission Data</h1>
 
       <p className="page-subtitle">
-        Submission dashboard with date range, vendor, Talent Acquisition,
+        Submission dashboard with date range, vendor, processed by, entity,
         function and status filters.
       </p>
 
@@ -422,10 +442,23 @@ export default function SubmissionData() {
             setSelectedInactiveVendor("All");
           }}
         >
-          <option value="All">Talent Acquisition Team</option>
+          <option value="All">Processed By</option>
           {TALENT_ACQUISITION_OPTIONS.map((name) => (
             <option key={name} value={name}>
               {name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          style={styles.select}
+          value={selectedEntity}
+          onChange={(e) => setSelectedEntity(e.target.value)}
+        >
+          <option value="All">All Entities</option>
+          {ENTITY_OPTIONS.map((entity) => (
+            <option key={entity} value={entity}>
+              {entity}
             </option>
           ))}
         </select>

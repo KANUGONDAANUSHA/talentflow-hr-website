@@ -47,6 +47,11 @@ const TIME_FILTERS = [
   "This Year",
 ];
 
+const WORKFORCE_OPTIONS = [
+  "All Workforce",
+  "Blue-collar workforce",
+];
+
 const REMOVED_ENTITIES = ["chalukya samrat"];
 const EXTRA_FUNCTIONS = ["HR", "Payroll"];
 
@@ -54,6 +59,7 @@ export default function Reports() {
   const [jobs, setJobs] = useState([]);
   const [selectedFunction, setSelectedFunction] = useState("All Functions");
   const [selectedEntity, setSelectedEntity] = useState("All Entities");
+  const [selectedWorkforce, setSelectedWorkforce] = useState("All Workforce");
   const [selectedDashboard, setSelectedDashboard] = useState("All Dashboard");
   const [selectedTime, setSelectedTime] = useState("All Time");
   const [fromDate, setFromDate] = useState("");
@@ -80,29 +86,54 @@ export default function Reports() {
   };
 
   const getSlNo = (item) => getValue(item, ["Sl No.", "Sl No", "S No"]);
+
   const getDesignation = (item) =>
     clean(getValue(item, ["Designation", "Role", "Position"]));
+
   const getFunction = (item) =>
     clean(getValue(item, ["Function", "Department", "FUNCTION"]));
+
+  const getWorkforce = (item) =>
+    clean(
+      getValue(item, [
+        "Workforce",
+        "Work Force",
+        "Workforce Type",
+        "Work Force Type",
+        "Category",
+        "Hiring Category",
+        "Employee Category",
+      ])
+    );
+
   const getEntity = (item) => clean(getValue(item, ["Entity", "ENTITY"]));
   const getStatus = (item) => clean(getValue(item, ["Status", "STATUS"]));
+
   const getCreatedDate = (item) =>
     getValue(item, ["Created Date", "CreatedAt", "Date", "Opening Date"]);
+
   const getClosedDate = (item) =>
     getValue(item, ["Closed Date", "ClosedAt", "Closing Date"]);
 
   const getTotalPositions = (item) =>
     toNumber(getValue(item, ["Total Positions", "Total Position", "Total"]));
+
   const getJoined = (item) => toNumber(getValue(item, ["Joined"]));
+
   const getYTJ = (item) =>
     toNumber(getValue(item, ["Yet to join", "Yet to Join", "YTJ"]));
+
   const getOpen = (item) =>
     toNumber(getValue(item, ["Open Number", "Open", "Openings"]));
+
   const getHold = (item) => toNumber(getValue(item, ["On Hold", "Hold"]));
+
   const getVendors = (item) =>
     toNumber(getValue(item, ["Closed by vendors", "Closed by Vendors"]));
+
   const getTA = (item) =>
     toNumber(getValue(item, ["Closed by TA Team", "TA Team"]));
+
   const getInternal = (item) =>
     toNumber(
       getValue(item, [
@@ -115,6 +146,24 @@ export default function Reports() {
   const isRemovedEntity = (entity) => {
     const value = normalize(entity);
     return REMOVED_ENTITIES.some((removed) => value.includes(removed));
+  };
+
+  const isBlueCollarRow = (item) => {
+    const text = [
+      getWorkforce(item),
+      getFunction(item),
+      getDesignation(item),
+      getStatus(item),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      text.includes("blue-collar workforce") ||
+      text.includes("blue collar workforce") ||
+      text.includes("blue-collar") ||
+      text.includes("blue collar")
+    );
   };
 
   const parseDate = (value) => {
@@ -210,6 +259,7 @@ export default function Reports() {
       const text = [
         getDesignation(item),
         getFunction(item),
+        getWorkforce(item),
         entity,
         getStatus(item),
       ]
@@ -223,6 +273,7 @@ export default function Reports() {
       return (
         getDesignation(item) ||
         getFunction(item) ||
+        getWorkforce(item) ||
         entity ||
         getStatus(item) ||
         getTotalPositions(item) > 0 ||
@@ -306,6 +357,10 @@ export default function Reports() {
       rows = rows.filter((item) => getEntity(item) === selectedEntity);
     }
 
+    if (selectedWorkforce === "Blue-collar workforce") {
+      rows = rows.filter((item) => isBlueCollarRow(item));
+    }
+
     rows = rows.filter((item) =>
       isWithinTime(getCreatedDate(item), getClosedDate(item))
     );
@@ -335,6 +390,7 @@ export default function Reports() {
           getSlNo(item),
           getDesignation(item),
           getFunction(item),
+          getWorkforce(item),
           getEntity(item),
           getStatus(item),
           getCreatedDate(item),
@@ -351,6 +407,7 @@ export default function Reports() {
     jobs,
     selectedFunction,
     selectedEntity,
+    selectedWorkforce,
     selectedDashboard,
     selectedTime,
     fromDate,
@@ -487,6 +544,7 @@ export default function Reports() {
         "Sl No.",
         "Designation",
         "Function",
+        "Workforce",
         "Entity",
         "Created Date",
         "Closed Date",
@@ -504,6 +562,7 @@ export default function Reports() {
         getSlNo(r),
         getDesignation(r),
         getFunction(r),
+        getWorkforce(r),
         getEntity(r),
         formatDate(getCreatedDate(r)),
         formatDate(getClosedDate(r)),
@@ -572,6 +631,18 @@ export default function Reports() {
           onChange={(e) => setSelectedFunction(e.target.value)}
         >
           {functions.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="filter-select"
+          value={selectedWorkforce}
+          onChange={(e) => setSelectedWorkforce(e.target.value)}
+        >
+          {WORKFORCE_OPTIONS.map((item) => (
             <option key={item} value={item}>
               {item}
             </option>
@@ -757,6 +828,7 @@ export default function Reports() {
                 <th>Sl No.</th>
                 <th>Designation</th>
                 <th>Function</th>
+                <th>Workforce</th>
                 <th>Entity</th>
                 <th>Created Date</th>
                 <th>Closed Date</th>
@@ -775,13 +847,13 @@ export default function Reports() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="15" style={{ textAlign: "center" }}>
+                  <td colSpan="16" style={{ textAlign: "center" }}>
                     Loading...
                   </td>
                 </tr>
               ) : filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan="15" style={{ textAlign: "center" }}>
+                  <td colSpan="16" style={{ textAlign: "center" }}>
                     No data found
                   </td>
                 </tr>
@@ -793,6 +865,7 @@ export default function Reports() {
                       <strong>{getDesignation(r)}</strong>
                     </td>
                     <td>{getFunction(r)}</td>
+                    <td>{getWorkforce(r)}</td>
                     <td>{getEntity(r)}</td>
                     <td>{formatDate(getCreatedDate(r))}</td>
                     <td>{formatDate(getClosedDate(r))}</td>
