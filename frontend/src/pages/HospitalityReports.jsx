@@ -4,6 +4,8 @@ const API_BASE =
   import.meta.env.VITE_API_URL ||
   "https://talentflow-hr-website-1jga.onrender.com";
 
+const ROWS_PER_PAGE = 10;
+
 export default function HospitalityReports() {
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState("");
@@ -13,6 +15,7 @@ export default function HospitalityReports() {
   const [toDate, setToDate] = useState("");
   const [showDashboard, setShowDashboard] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadReports = async () => {
     try {
@@ -22,6 +25,7 @@ export default function HospitalityReports() {
       const result = await res.json();
 
       setRows(Array.isArray(result.data) ? result.data : []);
+      setCurrentPage(1);
     } catch (error) {
       console.log("HOSPITALITY REPORTS ERROR:", error);
       setRows([]);
@@ -78,7 +82,6 @@ export default function HospitalityReports() {
         selectedFunction === "All Functions" || fn === selectedFunction;
 
       const text = Object.values(item).join(" ").toLowerCase();
-
       const matchesSearch = text.includes(search.toLowerCase());
 
       let matchesTime = true;
@@ -121,6 +124,17 @@ export default function HospitalityReports() {
       return matchesFunction && matchesSearch && matchesTime;
     });
   }, [rows, selectedFunction, search, timeFilter, fromDate, toDate]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedFunction, timeFilter, fromDate, toDate]);
+
+  const totalPages = Math.ceil(filteredRows.length / ROWS_PER_PAGE) || 1;
+
+  const paginatedRows = useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredRows.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredRows, currentPage]);
 
   const dashboardData = useMemo(() => {
     const counts = {};
@@ -321,7 +335,9 @@ export default function HospitalityReports() {
           <div style={styles.reportHeader}>
             <h2 style={styles.reportTitle}>Hospitality Report Data</h2>
 
-            <span style={styles.countBadge}>{filteredRows.length} Records</span>
+            <span style={styles.countBadge}>
+              Showing {paginatedRows.length} of {filteredRows.length} Records
+            </span>
           </div>
 
           <div style={styles.tableWrapper}>
@@ -337,8 +353,8 @@ export default function HospitalityReports() {
               </thead>
 
               <tbody>
-                {filteredRows.length > 0 ? (
-                  filteredRows.map((row, rowIndex) => (
+                {paginatedRows.length > 0 ? (
+                  paginatedRows.map((row, rowIndex) => (
                     <tr key={rowIndex}>
                       {columns.map((column) => (
                         <td key={column} style={styles.td}>
@@ -357,6 +373,39 @@ export default function HospitalityReports() {
               </tbody>
             </table>
           </div>
+
+          {filteredRows.length > ROWS_PER_PAGE && (
+            <div style={styles.pagination}>
+              <button
+                style={{
+                  ...styles.pageBtn,
+                  opacity: currentPage === 1 ? 0.5 : 1,
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                }}
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((page) => page - 1)}
+              >
+                Previous
+              </button>
+
+              <span style={styles.pageInfo}>
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                style={{
+                  ...styles.pageBtn,
+                  opacity: currentPage === totalPages ? 0.5 : 1,
+                  cursor:
+                    currentPage === totalPages ? "not-allowed" : "pointer",
+                }}
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((page) => page + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>
@@ -419,6 +468,28 @@ const styles = {
     borderRadius: "12px",
     fontWeight: "700",
     cursor: "pointer",
+  },
+
+  pageBtn: {
+    border: "none",
+    background: "#2563eb",
+    color: "#ffffff",
+    padding: "10px 16px",
+    borderRadius: "10px",
+    fontWeight: "800",
+  },
+
+  pagination: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "14px",
+    marginTop: "18px",
+  },
+
+  pageInfo: {
+    fontWeight: "800",
+    color: "#374151",
   },
 
   dashboard: {

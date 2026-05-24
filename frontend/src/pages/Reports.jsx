@@ -24,6 +24,8 @@ const API_BASE = (
   "https://talentflow-hr-website-m3yb.onrender.com"
 ).replace(/\/$/, "");
 
+const ROWS_PER_PAGE = 10;
+
 const DASHBOARD_FILTERS = [
   "All Dashboard",
   "Total Positions",
@@ -47,11 +49,7 @@ const TIME_FILTERS = [
   "This Year",
 ];
 
-const WORKFORCE_OPTIONS = [
-  "All Workforce",
-  "Blue-collar workforce",
-];
-
+const WORKFORCE_OPTIONS = ["All Workforce", "Blue-collar workforce"];
 const REMOVED_ENTITIES = ["chalukya samrat"];
 const EXTRA_FUNCTIONS = ["HR", "Payroll"];
 
@@ -69,6 +67,7 @@ export default function Reports() {
   const [errorMsg, setErrorMsg] = useState("");
   const [showDashboard, setShowDashboard] = useState(false);
   const [maximizedChart, setMaximizedChart] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const clean = (value) => String(value ?? "").trim();
   const normalize = (value) => clean(value).toLowerCase().replace(/\s+/g, " ");
@@ -86,13 +85,10 @@ export default function Reports() {
   };
 
   const getSlNo = (item) => getValue(item, ["Sl No.", "Sl No", "S No"]);
-
   const getDesignation = (item) =>
     clean(getValue(item, ["Designation", "Role", "Position"]));
-
   const getFunction = (item) =>
     clean(getValue(item, ["Function", "Department", "FUNCTION"]));
-
   const getWorkforce = (item) =>
     clean(
       getValue(item, [
@@ -105,35 +101,25 @@ export default function Reports() {
         "Employee Category",
       ])
     );
-
   const getEntity = (item) => clean(getValue(item, ["Entity", "ENTITY"]));
   const getStatus = (item) => clean(getValue(item, ["Status", "STATUS"]));
-
   const getCreatedDate = (item) =>
     getValue(item, ["Created Date", "CreatedAt", "Date", "Opening Date"]);
-
   const getClosedDate = (item) =>
     getValue(item, ["Closed Date", "ClosedAt", "Closing Date"]);
 
   const getTotalPositions = (item) =>
     toNumber(getValue(item, ["Total Positions", "Total Position", "Total"]));
-
   const getJoined = (item) => toNumber(getValue(item, ["Joined"]));
-
   const getYTJ = (item) =>
     toNumber(getValue(item, ["Yet to join", "Yet to Join", "YTJ"]));
-
   const getOpen = (item) =>
     toNumber(getValue(item, ["Open Number", "Open", "Openings"]));
-
   const getHold = (item) => toNumber(getValue(item, ["On Hold", "Hold"]));
-
   const getVendors = (item) =>
     toNumber(getValue(item, ["Closed by vendors", "Closed by Vendors"]));
-
   const getTA = (item) =>
     toNumber(getValue(item, ["Closed by TA Team", "TA Team"]));
-
   const getInternal = (item) =>
     toNumber(
       getValue(item, [
@@ -309,6 +295,7 @@ export default function Reports() {
 
       const rows = removeBadRows(extractRows(result));
       setJobs(rows);
+      setCurrentPage(1);
 
       if (rows.length === 0) {
         setErrorMsg("No Nambiar Builders dashboard data found.");
@@ -415,6 +402,26 @@ export default function Reports() {
     searchText,
   ]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedFunction,
+    selectedEntity,
+    selectedWorkforce,
+    selectedDashboard,
+    selectedTime,
+    fromDate,
+    toDate,
+    searchText,
+  ]);
+
+  const totalPages = Math.ceil(filteredJobs.length / ROWS_PER_PAGE) || 1;
+
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredJobs.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredJobs, currentPage]);
+
   const summary = useMemo(() => {
     return filteredJobs.reduce(
       (acc, item) => {
@@ -462,16 +469,7 @@ export default function Reports() {
   };
 
   const statusBarData = {
-    labels: [
-      "Total",
-      "Joined",
-      "YTJ",
-      "Open",
-      "On Hold",
-      "Vendors",
-      "TA Team",
-      "Internal",
-    ],
+    labels: ["Total", "Joined", "YTJ", "Open", "On Hold", "Vendors", "TA Team", "Internal"],
     datasets: [
       {
         label: "Count",
@@ -789,11 +787,7 @@ export default function Reports() {
         >
           <div
             className="chart-card"
-            style={{
-              height: "90vh",
-              width: "100%",
-              overflow: "auto",
-            }}
+            style={{ height: "90vh", width: "100%", overflow: "auto" }}
           >
             <div className="table-header">
               <h3>
@@ -818,7 +812,9 @@ export default function Reports() {
       <div className="reports-table">
         <div className="table-header">
           <h3>Nambiar Builders Recruitment Reports</h3>
-          <span>{filteredJobs.length} Records</span>
+          <span>
+            Showing {paginatedJobs.length} of {filteredJobs.length} Records
+          </span>
         </div>
 
         <div className="table-scroll">
@@ -851,14 +847,14 @@ export default function Reports() {
                     Loading...
                   </td>
                 </tr>
-              ) : filteredJobs.length === 0 ? (
+              ) : paginatedJobs.length === 0 ? (
                 <tr>
                   <td colSpan="16" style={{ textAlign: "center" }}>
                     No data found
                   </td>
                 </tr>
               ) : (
-                filteredJobs.map((r, index) => (
+                paginatedJobs.map((r, index) => (
                   <tr key={index}>
                     <td>{getSlNo(r)}</td>
                     <td>
@@ -884,7 +880,62 @@ export default function Reports() {
             </tbody>
           </table>
         </div>
+
+        {filteredJobs.length > ROWS_PER_PAGE && (
+          <div style={paginationStyles.wrapper}>
+            <button
+              style={{
+                ...paginationStyles.button,
+                opacity: currentPage === 1 ? 0.5 : 1,
+                cursor: currentPage === 1 ? "not-allowed" : "pointer",
+              }}
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((page) => page - 1)}
+            >
+              Previous
+            </button>
+
+            <span style={paginationStyles.info}>
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              style={{
+                ...paginationStyles.button,
+                opacity: currentPage === totalPages ? 0.5 : 1,
+                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+              }}
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((page) => page + 1)}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
 }
+
+const paginationStyles = {
+  wrapper: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "14px",
+    marginTop: "18px",
+    paddingBottom: "8px",
+  },
+  button: {
+    border: "none",
+    background: "#2563eb",
+    color: "#ffffff",
+    padding: "10px 18px",
+    borderRadius: "10px",
+    fontWeight: "800",
+  },
+  info: {
+    fontWeight: "800",
+    color: "#374151",
+  },
+};
