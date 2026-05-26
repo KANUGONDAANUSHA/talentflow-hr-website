@@ -63,6 +63,7 @@ const FUNCTIONS = [
   "HR",
   "Talent Acquisition",
   "Payroll",
+  "Facility Management",
 ];
 
 const TIME_FILTERS = [

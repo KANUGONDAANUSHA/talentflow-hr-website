@@ -707,6 +707,7 @@ const FUNCTION_OPTIONS = [
   "HR",
   "Payroll",
   "Housekeeping",
+  "Facility Management",
 ];
 
 const WORKFORCE_OPTIONS = ["Blue-collar workforce"];

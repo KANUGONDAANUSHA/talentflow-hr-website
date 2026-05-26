@@ -51,7 +51,7 @@ const TIME_FILTERS = [
 
 const WORKFORCE_OPTIONS = ["All Workforce", "Blue-collar workforce"];
 const REMOVED_ENTITIES = ["chalukya samrat"];
-const EXTRA_FUNCTIONS = ["HR", "Payroll"];
+const EXTRA_FUNCTIONS = ["HR", "Payroll","Facility Management"];
 
 export default function Reports() {
   const [jobs, setJobs] = useState([]);
